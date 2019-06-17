@@ -16,24 +16,25 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+# Modified to use openjdk alpine instead of coreos as a base
 
-FROM centos:7
-MAINTAINER Apache BookKeeper <dev@bookkeeper.apache.org>
+FROM openjdk:8-jre-alpine
+LABEL MAINTAINER="Apache BookKeeper <dev@bookkeeper.apache.org>"
 
 ARG BK_VERSION=4.9.0
-ARG DISTRO_NAME=bookkeeper-server-${BK_VERSION}-bin
+ARG DISTRO_NAME=bookkeeper-all-${BK_VERSION}-bin
 ARG DISTRO_URL=https://archive.apache.org/dist/bookkeeper/bookkeeper-${BK_VERSION}/${DISTRO_NAME}.tar.gz
 
 ENV BOOKIE_PORT=3181
 EXPOSE $BOOKIE_PORT
 ENV BK_USER=bookkeeper
 ENV BK_HOME=/opt/bookkeeper
-ENV JAVA_HOME=/usr/lib/jvm/jre-1.8.0
 
 # Download Apache Bookkeeper, untar and clean up
 RUN set -x \
-    && adduser "${BK_USER}" \
-    && yum install -y java-1.8.0-openjdk-headless wget bash python sudo \
+    && adduser -D "${BK_USER}" \
+    && apk add --update --no-cache --virtual .build-deps iproute2 gnupg wget bash python3 coreutils sudo \
+    && apk add --update --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing --virtual perf bcc \
     && mkdir -pv /opt \
     && cd /opt \
     && wget -q "${DISTRO_URL}" \
@@ -44,10 +45,9 @@ RUN set -x \
     && gpg --import KEYS \
     && gpg --batch --verify "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz" \
     && tar -xzf "$DISTRO_NAME.tar.gz" \
-    && mv bookkeeper-server-${BK_VERSION}/ /opt/bookkeeper/ \
+    && mv bookkeeper-all-${BK_VERSION}/ /opt/bookkeeper/ \
     && rm -rf "$DISTRO_NAME.tar.gz" "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz.sha512" \
-    && yum remove -y wget \
-    && yum clean all
+    && apk del --no-cache wget
 
 WORKDIR /opt/bookkeeper
 
